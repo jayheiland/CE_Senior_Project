@@ -3,6 +3,7 @@
 ## Project Log
 Our weekly progress from August 2019 onwards.
 ### Week 1 (August 22 - August 29)
+* All:
 * Michelle:
 * Aros:
 * Jay:
