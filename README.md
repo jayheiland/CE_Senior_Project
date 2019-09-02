@@ -6,7 +6,7 @@ Our weekly progress from August 2019 onwards.
 * All:
 * Michelle:
 * Aros:
-* Jay:
+* Jay: Finished breadboarding a Voltage-Controlled Oscillator (VCO). It produces a saw-tooth wave and could potentially be moved to a PCB and used in our final synth. Continuing to troubleshoot a different breadboarded VCO that has more features such as Volt/Octave scaling.
 
 ## Resources
 A [list](https://docs.google.com/document/d/1bn2XwHxJaG-ds-zcZPaRnOW3YTtZJFIuCk1MftFgEfE/edit?usp=sharing) of websites, books, and people used by this project. These resources will be cited in our final report.
