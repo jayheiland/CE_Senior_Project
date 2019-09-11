@@ -4,7 +4,7 @@
 Our weekly progress from August 2019 onwards.
 ### Week 1 (August 22 - August 29)
 * All:
-* Michelle:
+* Michelle: Ordered Eurorack case, MIDI-to-CV converter module, and components for VCA.
 * Aros:
 * Jay: Finished breadboarding a Voltage-Controlled Oscillator (VCO). It produces a saw-tooth wave and could potentially be moved to a PCB and used in our final synth. Continuing to troubleshoot a different breadboarded VCO that has more features such as Volt/Octave scaling.
 
