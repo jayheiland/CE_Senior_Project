@@ -10,7 +10,7 @@ Our weekly progress from August 2019 onwards.
 * Jay: 
 
 ### Week 1 (September 6 - September 12)
-* All:
+* All: Reviewed Aros's Eagle schematic for VCA 1.
 * Michelle:
 * Aros:
 * Jay: Reviewed digipot/encoder usage in modules with Michelle. Worked on troubleshooting VCO 1, but could not get it properly working. Ordered parts for a new VCO module, VCO 2.
