@@ -3,27 +3,27 @@
 ## Project Log
 Our weekly progress from August 2019 onwards.
 
-### Week 1 (September 13 - September 19)
+### Week 4 (September 13 - September 19)
 * All:
 * Michelle:
 * Aros:
 * Jay: 
 
-### Week 1 (September 6 - September 12)
+### Week 3 (September 6 - September 12)
 * All: Reviewed Aros's Eagle schematic for VCA 1.
-* Michelle:
+* Michelle: Ordered components for VCA. Reviewed workings of digipots and rotary encoders; reviewed I2C protocol.
 * Aros:
 * Jay: Reviewed digipot/encoder usage in modules with Michelle. Worked on troubleshooting VCO 1, but could not get it properly working. Ordered parts for a new VCO module, VCO 2.
 
-### Week 1 (August 30 - September 5)
+### Week 2 (August 30 - September 5)
 * All:
-* Michelle:
+* Michelle: Ordered Eurorack case, and MIDI-to-CV converter module.
 * Aros:
 * Jay:
 
 ### Week 1 (August 22 - August 29)
 * All:
-* Michelle: Ordered Eurorack case, MIDI-to-CV converter module, and components for VCA.
+* Michelle: 
 * Aros:
 * Jay: Finished breadboarding a simple Voltage-Controlled Oscillator (VCO). It produces a saw-tooth wave and could potentially be moved to a PCB and used in our final synth. Continuing to troubleshoot VCO 1, which has more features such as Volt/Octave scaling.
 
