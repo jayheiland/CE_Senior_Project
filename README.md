@@ -7,7 +7,7 @@ Our weekly progress from August 2019 onwards.
 * All:
 * Michelle:
 * Aros:
-* Jay: 
+* Jay: Began construction of VCO 2
 
 ### Week 3 (September 6 - September 12)
 * All: Reviewed Aros's Eagle schematic for VCA 1.
