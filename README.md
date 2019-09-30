@@ -3,11 +3,18 @@
 ## Project Log
 Our weekly progress from August 2019 onwards.
 
+
+### Week 5 (September 20 - September 26)
+* All: Worked on troubleshooting VCA 1
+* Michelle:
+* Aros:
+* Jay:
+
 ### Week 4 (September 13 - September 19)
 * All:
 * Michelle:
 * Aros:
-* Jay: Began construction of VCO 2
+* Jay: VCO 2 works on a breadboard. It outputs a triangle wave and a sawtooth wave, and has a volt/octave scaling feature.
 
 ### Week 3 (September 6 - September 12)
 * All: Reviewed Aros's Eagle schematic for VCA 1.
