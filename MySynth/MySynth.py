@@ -10,32 +10,44 @@ from kivy.factory import Factory
 from kivy.properties import ObjectProperty
 from kivy.uix.popup import Popup
 
+import json
 import os
 
 class LoadDialog(FloatLayout):
     load = ObjectProperty(None)
     cancel = ObjectProperty(None)
 
-
 class SaveDialog(FloatLayout):
     save = ObjectProperty(None)
     text_input = ObjectProperty(None)
     cancel = ObjectProperty(None)
+
+class PresetPip(BoxLayout):
+    def __init__(self, **kwargs):
+        super(PresetPip, self).__init__(**kwargs)
+        self.orientation = 'horizontal'
+        self.size_hint = (1, None)
+        self.size_hint_min_x = 100
+        self.height = 50
+        self.nameButton = Button(size_hint=(.8,1))
+        self.add_widget(self.nameButton)
+        self.closeButton = Button(text='X', size_hint=(.2,1))
+        self.add_widget(self.closeButton)
+        self.filePath = ''
 
 class Module(BoxLayout):
     def __init__(self, **kwargs):
         super(Module, self).__init__(**kwargs)
         self.orientation = 'vertical'
         self.size_hint = (None, None)
-        self.size = (200, 200)
-        self.label = Label(text='VCO 1', size_hint=(1,.7))
+        self.size = (180, 100)
+        self.label = Label(text='Module', size_hint=(1,.6))
         self.add_widget(self.label)
-        self.input = TextInput(hint_text='Value', size_hint=(1,.3), multiline=False, on_text_validate=self.on_enter)
+        self.input = TextInput(text='0', size_hint=(1,.4), multiline=False, on_text_validate=self.on_enter)
         self.add_widget(self.input)
 
     def on_enter(self, instance):
         print("Set '" + self.label.text + "' to " + self.input.text)
-
 
 class ModulesPanel(StackLayout):
     def __init__(self, **kwargs):
@@ -67,33 +79,12 @@ class MySynth(App):
         self.loadPresetButton = Button(text='Load', size_hint_x=.5, size_hint_y=None, height=30, size_hint_min_x=50, on_release=self.show_load)
         self.presetsSidebar.add_widget(self.loadPresetButton)
 
-        for i in range(1, 10):
-            self.preset = Button(text='Preset ' + str(i), size_hint_x=1, size_hint_y=None, height=50, size_hint_min_x=100)
-            self.presetsSidebar.add_widget(self.preset)
-
         #self.presetsSidebar.remove_widget(self.presetsSidebar.children[4])
         self.root.add_widget(self.presetsSidebar)
 
         #create modules panel
-        self.root.add_widget(ModulesPanel())
-
-
-        #tutorial stuff
-        self.box2 = BoxLayout(orientation='horizontal', spacing=20)
- 
-        self.txt = TextInput(hint_text='Write here', size_hint=(.5,.1))
- 
-        self.btn = Button(text='Clear All', on_press=self.clearText, size_hint=(.1,.1))
- 
-        self.box2.add_widget(self.txt)
- 
-        self.box2.add_widget(self.btn)
- 
-        return self.root
- 
-    def clearText(self, instance):
- 
-        self.txt.text = ''
+        self.modules = ModulesPanel()
+        self.root.add_widget(self.modules)
 
     #save/load dialog functions
     def dismiss_popup(self):
@@ -112,26 +103,48 @@ class MySynth(App):
         self._popup.open()
 
     def load(self, path, filename):
-        #with open(os.path.join(path, filename[0])) as stream:
-        #    widgets to write to go here = stream.read()
-
+        print("path is " + str(path))
+        print("filename is " + str(filename))
+        self.addPresetButton(path, filename)
+        with open(os.path.join(path, filename[0])) as infile:
+            data = json.load(infile)
+            for key, value in data.items():
+                for module in self.modules.children:
+                    if key == module.label.text:
+                        module.input.text = str(value)
         self.dismiss_popup()
 
     def save(self, path, filename):
-        #with open(os.path.join(path, filename), 'w') as stream:
-        #    stream.write('stuff to write to save file goes here')
+        if ".preset" not in filename:
+            filename = filename + ".preset"
+        with open(os.path.join(path, filename), 'w') as outfile:
+            json.dump(self.getModulesData(), outfile)
 
         self.dismiss_popup()
 
-#register classes with the Factory for use throughout project
-#Factory.register('MySynth', cls=MySynth)
-#Factory.register('LoadDialog', cls=LoadDialog)
-#Factory.register('SaveDialog', cls=SaveDialog)
-#Factory.register('Module', cls=Module)
-#Factory.register('ModulesPanel', cls=ModulesPanel)
+    def getModulesData(self):
+        data = {}
+        for module in self.modules.children:
+            data[module.label.text] = int(module.input.text)
+        return data
+    
+    def addPresetButton(self, path, filename):
+        presetLoaded = False
+        for preset in self.presetsSidebar.children:
+            if preset is PresetPip:
+                if str(filename) == preset.filePath:
+                    presetLoaded = True
+        if presetLoaded == False:
+            self.preset = PresetPip()
+            filenameSplit = str(filename).split("/")
+            filenameSplit = filenameSplit[len(filenameSplit)-1].split(".")
+            self.preset.nameButton.text = filenameSplit[0]
+            self.preset.filePath = str(filename)
+            self.presetsSidebar.add_widget(self.preset)
 
 
 
 
 if __name__ == '__main__':
+    Window.clearcolor = (.3,.3,.4,1)
     MySynth().run()
