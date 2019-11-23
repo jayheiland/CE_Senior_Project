@@ -16,6 +16,8 @@ import json
 import os
 import threading
 
+ser = serial.Serial()
+
 class LoadDialog(FloatLayout):
     load = ObjectProperty(None)
     cancel = ObjectProperty(None)
@@ -48,21 +50,46 @@ class Module(BoxLayout):
         self.add_widget(self.label)
         self.input = TextInput(text='0', size_hint=(1,.4), multiline=False, on_text_validate=self.on_enter_module_value)
         self.add_widget(self.input)
-        threading.Timer(1.0, self.readSynth).start()
 
     def on_enter_module_value(self, instance):
-        if(self.parent.parent.ser.name != None):
-            self.parent.parent.ser.write(b'1') #number of digipot to write to; will need to update this section after adding multiple modules
-            self.parent.parent.ser.write(self.input.text[0])
-            self.parent.parent.ser.write(self.input.text[1])
-        print("Module value: " + self.input.text)
-        print("Set '" + self.label.text + "' to " + self.input.text)
+        #due to the initial serial setup, the communcation with the STM should be hanging after the "Resistor?" prompt
+        print("Writing to synth")
+        global ser
+        wrote_values = False
+        if(ser.name != None):
+            ser.write(b'r') #number of digipot to write to; will need to update this section after adding multiple modules
+            hex_string = str(hex(int(self.input.text)))
+            if(len(hex_string) == 3):
+                hex_string = hex_string[:2] + '0' + hex_string[2:]
+            print(hex_string)
+            while True:
+                line = ser.readline()
+                print(line)
+                if b'Resistor?\n' in line:
+                    if(wrote_values):
+                        break
+                    ser.write(b'1')
+                elif b'Value MSN?\n' in line:
+                    ser.write(hex_string[2].upper().encode("utf-8"))
+                elif b'Value LSN?\n' in line:
+                    ser.write(hex_string[3].upper().encode("utf-8"))
+                    wrote_values = True
+            print("Set '" + self.label.text + "' to " + self.input.text + " on a 0-255 scale")
+            self.read_synth()
     
-    def readSynth(self):
-        if(self.parent.parent.ser.name != None):
-            self.parent.parent.ser.write(b'r')
-            self.input.text = self.parent.parent.ser.readline() #reads information from multiple pots, need to parse this line
-        print("executing readSynth")
+    def read_synth(self):
+        #the STM only writes the encoder values to the digipots when this program writes "r"
+        print("Executing read_synth")
+        global ser
+        if(ser.name != None):
+            ser.write(b'r')
+            vals = []
+            while True:
+                line = ser.readline()
+                vals.append(str(line))
+                if b'Resistor?\n' in line:
+                    break
+            print(vals)
 
 class ModulesPanel(StackLayout):
     def __init__(self, **kwargs):
@@ -83,8 +110,6 @@ class MySynth(App):
     
     def build(self):
         self.root = BoxLayout(orientation='horizontal', size_hint_min_x=500)
-        #init the serial port
-        self.root.ser = serial.Serial()
         #create presets sidebar
         self.presetsSidebar = StackLayout(orientation='lr-tb', size_hint=(.2,1))
 
@@ -129,7 +154,7 @@ class MySynth(App):
     def load(self, path, filename):
         print("path is " + str(path))
         print("filename is " + str(filename))
-        self.addPresetButton(path, filename)
+        self.add_preset_button(path, filename)
         with open(os.path.join(path, filename[0])) as infile:
             data = json.load(infile)
             for key, value in data.items():
@@ -138,27 +163,39 @@ class MySynth(App):
                         module.input.text = str(value)
         self.dismiss_popup()
     
+    #setup the serial port to communicate with the STM
     def connect(self, path, filename):
-        self.ser = serial.Serial(str(filename), 115200)
+        global ser
+        filename = str(filename).replace("['", "")
+        filename = filename.replace("']", "")
+        filename = filename.replace("cu.", "tty.")
+        ser = serial.Serial(filename, 115200, timeout=1)
         print("Device path is: " + str(filename))
-        print("Baud rate: " + str(self.ser.baudrate))
-        print("Port name: " + self.ser.name)
+        print("Baud rate: " + str(ser.baudrate))
+        print("Port name: " + ser.name)
+        print(ser.write(b'r'))
+        while True:
+            line = ser.readline()
+            print(line)
+            if (b'Resistor?\n' in line):
+                break
+        self.dismiss_popup()
 
     def save(self, path, filename):
         if ".preset" not in filename:
             filename = filename + ".preset"
         with open(os.path.join(path, filename), 'w') as outfile:
-            json.dump(self.getModulesData(), outfile)
+            json.dump(self.get_modules_data(), outfile)
 
         self.dismiss_popup()
 
-    def getModulesData(self):
+    def get_modules_data(self):
         data = {}
         for module in self.modules.children:
             data[module.label.text] = int(module.input.text)
         return data
     
-    def addPresetButton(self, path, filename):
+    def add_preset_button(self, path, filename):
         presetLoaded = False
         for preset in self.presetsSidebar.children:
             if preset is PresetPip:
@@ -173,7 +210,8 @@ class MySynth(App):
             self.presetsSidebar.add_widget(self.preset)
     
     def on_stop(self):
-        self.root.ser.close()
+        print("Closing serial port")
+        ser.close()
 
 
 
