@@ -10,13 +10,11 @@ from kivy.factory import Factory
 from kivy.properties import ObjectProperty
 from kivy.uix.popup import Popup
 
-import serial
-import time
-import json
-import os
-import threading
+import serial, time, json, os, threading
 
-ser = serial.Serial()
+ser = serial.Serial() #serial object for communcating with the synth
+
+read_timer = None #a timer thread for periodically reading the synth's values
 
 class LoadDialog(FloatLayout):
     load = ObjectProperty(None)
@@ -75,21 +73,6 @@ class Module(BoxLayout):
                     ser.write(hex_string[3].upper().encode("utf-8"))
                     wrote_values = True
             print("Set '" + self.label.text + "' to " + self.input.text + " on a 0-255 scale")
-            self.read_synth()
-    
-    def read_synth(self):
-        #the STM only writes the encoder values to the digipots when this program writes "r"
-        print("Executing read_synth")
-        global ser
-        if(ser.name != None):
-            ser.write(b'r')
-            vals = []
-            while True:
-                line = ser.readline()
-                vals.append(str(line))
-                if b'Resistor?\n' in line:
-                    break
-            print(vals)
 
 class ModulesPanel(StackLayout):
     def __init__(self, **kwargs):
@@ -129,6 +112,28 @@ class MySynth(App):
         self.modules = ModulesPanel()
         self.root.add_widget(self.modules)
 
+    def read_synth(self):
+        #the STM only writes the encoder values to the digipots when this program writes "r"
+        print("Executing read_synth")
+        global read_timer
+        '''global ser
+        if(ser.name != None):
+            ser.write(b'r')
+            reads = []
+            while True:
+                line = ser.readline()
+                reads.append(str(line))
+                if b'Resistor?\n' in line:
+                    break
+            print(reads)
+            module_vals = []
+            for i in range(3):
+                module_vals[i] = reads[i][len(reads[i])-3:len(reads[i])-2]
+            print(module_vals)'''
+        read_timer = threading.Timer(2.0, self.read_synth)
+        read_timer.start()
+        
+
     #save/load dialog functions
     def dismiss_popup(self):
         self._popup.dismiss()
@@ -165,7 +170,7 @@ class MySynth(App):
     
     #setup the serial port to communicate with the STM
     def connect(self, path, filename):
-        global ser
+        global ser, read_timer
         filename = str(filename).replace("['", "")
         filename = filename.replace("']", "")
         filename = filename.replace("cu.", "tty.")
@@ -180,13 +185,13 @@ class MySynth(App):
             if (b'Resistor?\n' in line):
                 break
         self.dismiss_popup()
+        self.read_synth()
 
     def save(self, path, filename):
         if ".preset" not in filename:
             filename = filename + ".preset"
         with open(os.path.join(path, filename), 'w') as outfile:
             json.dump(self.get_modules_data(), outfile)
-
         self.dismiss_popup()
 
     def get_modules_data(self):
@@ -210,8 +215,9 @@ class MySynth(App):
             self.presetsSidebar.add_widget(self.preset)
     
     def on_stop(self):
-        print("Closing serial port")
+        read_timer.cancel()
         ser.close()
+        print("Closing serial port")
 
 
 
