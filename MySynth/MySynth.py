@@ -16,6 +16,10 @@ ser = serial.Serial() #serial object for communcating with the synth
 
 read_timer = None #a timer thread for periodically reading the synth's values
 
+module_1_name = "VCO"
+module_2_name = "VCF Resonance"
+module_3_name = "VCF Cutoff"
+
 class LoadDialog(FloatLayout):
     load = ObjectProperty(None)
     cancel = ObjectProperty(None)
@@ -46,16 +50,29 @@ class Module(BoxLayout):
         self.size = (180, 100)
         self.label = Label(text='Module', size_hint=(1,.6))
         self.add_widget(self.label)
-        self.input = TextInput(text='0', size_hint=(1,.4), multiline=False, on_text_validate=self.on_enter_module_value)
+        self.input = TextInput(text='0', size_hint=(1,.4), multiline=False, on_text_validate=self.on_enter_module_value, on_double_tap=self.on_select_module_input)
         self.add_widget(self.input)
 
+    def on_select_module_input(self, instance):
+        read_timer.cancel() #cancel the reading timer while entering values, otherwise the app will continue to overwrite the GUI values
+    
     def on_enter_module_value(self, instance):
         #due to the initial serial setup, the communcation with the STM should be hanging after the "Resistor?" prompt
         print("Writing to synth")
         global ser
+        res_index = 0
+        #find the index of the corresponding resistor
+        module_name = self.label.text
+        if(module_name == module_1_name):
+            res_index = 1
+        elif(module_name == module_2_name):
+            res_index = 2
+        elif(module_name == module_3_name):
+            res_index = 3
+        
         wrote_values = False
         if(ser.name != None):
-            ser.write(b'r') #number of digipot to write to; will need to update this section after adding multiple modules
+            ser.write(b'r')
             hex_string = str(hex(int(self.input.text)))
             if(len(hex_string) == 3):
                 hex_string = hex_string[:2] + '0' + hex_string[2:]
@@ -66,28 +83,29 @@ class Module(BoxLayout):
                 if b'Resistor?\n' in line:
                     if(wrote_values):
                         break
-                    ser.write(b'1')
+                    ser.write(str(res_index).encode("utf-8"))
                 elif b'Value MSN?\n' in line:
                     ser.write(hex_string[2].upper().encode("utf-8"))
                 elif b'Value LSN?\n' in line:
                     ser.write(hex_string[3].upper().encode("utf-8"))
                     wrote_values = True
             print("Set '" + self.label.text + "' to " + self.input.text + " on a 0-255 scale")
+            #self.parent.parent.read_synth()
 
 class ModulesPanel(StackLayout):
     def __init__(self, **kwargs):
         super(ModulesPanel, self).__init__(**kwargs)
         self.orientation = 'lr-tb'
         self.size_hint = (.8,1)
-        self.VCO_1 = Module()
-        self.VCO_1.label.text = "VCO 1"
-        self.add_widget(self.VCO_1)
-        self.VCO_2 = Module()
-        self.VCO_2.label.text = "VCO 2"
-        self.add_widget(self.VCO_2)
-        self.Filter_1 = Module()
-        self.Filter_1.label.text = "Filter 1"
-        self.add_widget(self.Filter_1)
+        self.mod_1 = Module()
+        self.mod_1.label.text = module_1_name
+        self.add_widget(self.mod_1)
+        self.mod_2 = Module()
+        self.mod_2.label.text = module_2_name
+        self.add_widget(self.mod_2)
+        self.mod_3 = Module()
+        self.mod_3.label.text = module_3_name
+        self.add_widget(self.mod_3)
 
 class MySynth(App):
     
@@ -116,7 +134,7 @@ class MySynth(App):
         #the STM only writes the encoder values to the digipots when this program writes "r"
         print("Executing read_synth")
         global read_timer
-        '''global ser
+        global ser
         if(ser.name != None):
             ser.write(b'r')
             reads = []
@@ -127,10 +145,18 @@ class MySynth(App):
                     break
             print(reads)
             module_vals = []
-            for i in range(3):
-                module_vals[i] = reads[i][len(reads[i])-3:len(reads[i])-2]
-            print(module_vals)'''
-        read_timer = threading.Timer(2.0, self.read_synth)
+            for i in range(0,3):
+                #print(i)
+                #print(reads[i][len(reads[i])-5:len(reads[i])-3])
+                module_vals.append(reads[i][len(reads[i])-5:len(reads[i])-3])
+            print(module_vals)
+        #write digipot values to GUI modules (convert: hex -> int -> string)
+        for m in range(0,3):
+            hex_str = "0x" + str(module_vals[m])
+            self.modules.children[2-m].input.text = str(int(hex_str,base=16))
+            print(self.modules.children[2-m].label.text + ": " + self.modules.children[2-m].input.text)
+        #reset "read synth" timer thread
+        read_timer = threading.Timer(5.0, self.read_synth)
         read_timer.start()
         
 
@@ -216,6 +242,7 @@ class MySynth(App):
     
     def on_stop(self):
         read_timer.cancel()
+        time.sleep(1)
         ser.close()
         print("Closing serial port")
 
