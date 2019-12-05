@@ -16,9 +16,12 @@ ser = serial.Serial() #serial object for communcating with the synth
 
 read_timer = None #a timer thread for periodically reading the synth's values
 
-module_1_name = "VCO"
-module_2_name = "VCF Resonance"
-module_3_name = "VCF Cutoff"
+presets_dict = {}
+focused_preset_name = ""
+
+module_1_name = "VCO - Pitch"
+module_2_name = "Low Pass Filter - Cutoff"
+module_3_name = "High Pass Filter - Cutoff"
 
 class LoadDialog(FloatLayout):
     load = ObjectProperty(None)
@@ -54,43 +57,17 @@ class Module(BoxLayout):
         self.add_widget(self.input)
 
     def on_select_module_input(self, instance):
-        read_timer.cancel() #cancel the reading timer while entering values, otherwise the app will continue to overwrite the GUI values
+        if(read_timer != None):
+            read_timer.cancel() #cancel the reading timer while entering values, otherwise the app will continue to overwrite the GUI values
     
     def on_enter_module_value(self, instance):
         #due to the initial serial setup, the communcation with the STM should be hanging after the "Resistor?" prompt
-        print("Writing to synth")
         global ser
         res_index = 0
         #find the index of the corresponding resistor
         module_name = self.label.text
-        if(module_name == module_1_name):
-            res_index = 1
-        elif(module_name == module_2_name):
-            res_index = 2
-        elif(module_name == module_3_name):
-            res_index = 3
-        
-        wrote_values = False
-        if(ser.name != None):
-            ser.write(b'r')
-            hex_string = str(hex(int(self.input.text)))
-            if(len(hex_string) == 3):
-                hex_string = hex_string[:2] + '0' + hex_string[2:]
-            print(hex_string)
-            while True:
-                line = ser.readline()
-                print(line)
-                if b'Resistor?\n' in line:
-                    if(wrote_values):
-                        break
-                    ser.write(str(res_index).encode("utf-8"))
-                elif b'Value MSN?\n' in line:
-                    ser.write(hex_string[2].upper().encode("utf-8"))
-                elif b'Value LSN?\n' in line:
-                    ser.write(hex_string[3].upper().encode("utf-8"))
-                    wrote_values = True
-            print("Set '" + self.label.text + "' to " + self.input.text + " on a 0-255 scale")
-            #self.parent.parent.read_synth()
+        hex_string = str(hex(int(self.input.text)))
+        self.parent.write_synth(hex_string, module_name)
 
 class ModulesPanel(StackLayout):
     def __init__(self, **kwargs):
@@ -106,34 +83,10 @@ class ModulesPanel(StackLayout):
         self.mod_3 = Module()
         self.mod_3.label.text = module_3_name
         self.add_widget(self.mod_3)
-
-class MySynth(App):
     
-    def build(self):
-        self.root = BoxLayout(orientation='horizontal', size_hint_min_x=500)
-        #create presets sidebar
-        self.presetsSidebar = StackLayout(orientation='lr-tb', size_hint=(.2,1))
-
-        self.savePresetButton = Button(text='Save', size_hint_x=.5, size_hint_y=None, height=30, size_hint_min_x=50, on_release=self.show_save)
-        self.presetsSidebar.add_widget(self.savePresetButton)
-
-        self.loadPresetButton = Button(text='Load', size_hint_x=.5, size_hint_y=None, height=30, size_hint_min_x=50, on_release=self.show_load)
-        self.presetsSidebar.add_widget(self.loadPresetButton)
-
-        self.connectButton = Button(text='Connect', size_hint_x=.5, size_hint_y=None, height=30, size_hint_min_x=50, on_release=self.show_connect)
-        self.presetsSidebar.add_widget(self.connectButton)
-
-        #self.presetsSidebar.remove_widget(self.presetsSidebar.children[4])
-        self.root.add_widget(self.presetsSidebar)
-
-        #create modules panel
-        self.modules = ModulesPanel()
-        self.root.add_widget(self.modules)
-
     def read_synth(self):
         #the STM only writes the encoder values to the digipots when this program writes "r"
         print("Executing read_synth")
-        global read_timer
         global ser
         if(ser.name != None):
             ser.write(b'r')
@@ -150,15 +103,75 @@ class MySynth(App):
                 #print(reads[i][len(reads[i])-5:len(reads[i])-3])
                 module_vals.append(reads[i][len(reads[i])-5:len(reads[i])-3])
             print(module_vals)
-        #write digipot values to GUI modules (convert: hex -> int -> string)
-        for m in range(0,3):
-            hex_str = "0x" + str(module_vals[m])
-            self.modules.children[2-m].input.text = str(int(hex_str,base=16))
-            print(self.modules.children[2-m].label.text + ": " + self.modules.children[2-m].input.text)
-        #reset "read synth" timer thread
-        read_timer = threading.Timer(5.0, self.read_synth)
-        read_timer.start()
+            #write digipot values to GUI modules (convert: hex -> int -> string)
+            for m in range(0,3):
+                hex_str = "0x" + str(module_vals[m])
+                self.children[2-m].input.text = str(int(hex_str,base=16))
+                print(self.children[2-m].label.text + ": " + self.children[2-m].input.text)
+        self.restart_read_timer()
+    
+    def write_synth(self, hex_string, module_name):
+        #due to the initial serial setup, the communcation with the STM should be hanging after the "Resistor?" prompt
+        global ser
+        res_index = 0
+        #find the index of the corresponding resistor
+        if(module_name == module_1_name):
+            res_index = 1
+        elif(module_name == module_2_name):
+            res_index = 5
+        elif(module_name == module_3_name):
+            res_index = 6
         
+        wrote_values = False
+        if(ser.name != None):
+            print("Writing to synth")
+            ser.write(b'r')
+            if(len(hex_string) == 3):
+                hex_string = hex_string[:2] + '0' + hex_string[2:]
+            print(hex_string)
+            while True:
+                line = ser.readline()
+                print(line)
+                if b'Resistor?\n' in line:
+                    if(wrote_values):
+                        break
+                    ser.write(str(res_index).encode("utf-8"))
+                elif b'Value MSN?\n' in line:
+                    ser.write(hex_string[2].upper().encode("utf-8"))
+                elif b'Value LSN?\n' in line:
+                    ser.write(hex_string[3].upper().encode("utf-8"))
+                    wrote_values = True
+            print("Set '" + module_name + "' to " + str(int(hex_string,base=16)) + " on a 0-255 scale")
+            self.read_synth()
+    
+    def restart_read_timer(self):
+        #reset "read synth" timer thread
+        global ser
+        if(ser.name != None):
+            global read_timer
+            read_timer = threading.Timer(5.0, self.read_synth)
+            read_timer.start()
+
+class MySynth(App):
+    
+    def build(self):
+        self.root = BoxLayout(orientation='horizontal', size_hint_min_x=500)
+        #create presets sidebar
+        self.presetsSidebar = StackLayout(orientation='lr-tb', size_hint=(.2,1))
+
+        self.savePresetButton = Button(text='Save', size_hint_x=.5, size_hint_y=None, height=30, size_hint_min_x=50, on_release=self.show_save)
+        self.presetsSidebar.add_widget(self.savePresetButton)
+
+        self.loadPresetButton = Button(text='Load', size_hint_x=.5, size_hint_y=None, height=30, size_hint_min_x=50, on_release=self.show_load)
+        self.presetsSidebar.add_widget(self.loadPresetButton)
+
+        self.connectButton = Button(text='Connect', size_hint_x=.5, size_hint_y=None, height=30, size_hint_min_x=50, on_release=self.show_connect)
+        self.presetsSidebar.add_widget(self.connectButton)
+        self.root.add_widget(self.presetsSidebar)
+
+        #create modules panel
+        self.modules = ModulesPanel()
+        self.root.add_widget(self.modules)
 
     #save/load dialog functions
     def dismiss_popup(self):
@@ -183,6 +196,8 @@ class MySynth(App):
         self._popup.open()
 
     def load(self, path, filename):
+        if(read_timer != None):
+            read_timer.cancel()
         print("path is " + str(path))
         print("filename is " + str(filename))
         self.add_preset_button(path, filename)
@@ -192,6 +207,10 @@ class MySynth(App):
                 for module in self.modules.children:
                     if key == module.label.text:
                         module.input.text = str(value)
+                        hex_string = str(hex(int(module.input.text)))
+                        self.modules.write_synth(hex_string, module.label.text)
+            print(str(data))
+        self.modules.restart_read_timer()
         self.dismiss_popup()
     
     #setup the serial port to communicate with the STM
@@ -210,8 +229,8 @@ class MySynth(App):
             print(line)
             if (b'Resistor?\n' in line):
                 break
+        self.modules.restart_read_timer()
         self.dismiss_popup()
-        self.read_synth()
 
     def save(self, path, filename):
         if ".preset" not in filename:
@@ -241,9 +260,11 @@ class MySynth(App):
             self.presetsSidebar.add_widget(self.preset)
     
     def on_stop(self):
-        read_timer.cancel()
+        if(read_timer != None):
+            read_timer.cancel()
         time.sleep(1)
-        ser.close()
+        if(ser != None):
+            ser.close()
         print("Closing serial port")
 
 

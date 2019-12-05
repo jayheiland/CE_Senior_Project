@@ -1,6 +1,6 @@
 To-do:
 
-Finish parsing and reading of module info
 Sidebar functionality - load from file into dict, allow switching between presets using sidebar
 Sliders in GUI
-Lock the timing thread around a "write to modules function"
+Make it so that load button is only enabled upon connecting to synth
+Test if the serial error is a constant problem, or if it can be fixed by resetting the STM
