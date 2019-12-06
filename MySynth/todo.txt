@@ -1,6 +1,5 @@
 To-do:
 
-Updating the GUI values using a preset button does not write to the STM
 Sliders in GUI
 Test if the serial error is a constant problem, or if it can be fixed by resetting the STM
 reduce read timer time

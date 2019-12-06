@@ -109,6 +109,7 @@ class ModulesPanel(StackLayout):
         #the STM only writes the encoder values to the digipots when this program writes "r"
         print("Executing read_synth")
         global ser
+        global read_timer
         if(ser.name != None):
             ser.write(b'r')
             reads = []
@@ -127,6 +128,8 @@ class ModulesPanel(StackLayout):
                 hex_str = "0x" + str(module_vals[m])
                 self.children[2-m].input.text = str(int(hex_str,base=16))
                 print(self.children[2-m].label.text + ": " + self.children[2-m].input.text)
+        if(read_timer != None):
+            read_timer.cancel()
         self.restart_read_timer()
     
     def write_synth(self, hex_string, module_name):
