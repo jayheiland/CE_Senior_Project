@@ -17,7 +17,6 @@ ser = serial.Serial() #serial object for communcating with the synth
 read_timer = None #a timer thread for periodically reading the synth's values
 
 presets_dict = {}
-focused_preset_name = ''
 
 module_1_name = "VCO - Pitch"
 module_2_name = "Low Pass Filter - Cutoff"
@@ -77,8 +76,10 @@ class Module(BoxLayout):
         self.add_widget(self.input)
 
     def on_select_module_input(self, instance):
+        global read_timer
         if(read_timer != None):
-            read_timer.cancel() #cancel the reading timer while entering values, otherwise the app will continue to overwrite the GUI values
+            read_timer.cancel()
+            self.parent.restart_read_timer() #cancel the reading timer while entering values, otherwise the app will continue to overwrite the GUI values
     
     def on_enter_module_value(self, instance):
         #due to the initial serial setup, the communcation with the STM should be hanging after the "Resistor?" prompt
@@ -119,8 +120,6 @@ class ModulesPanel(StackLayout):
             print(reads)
             module_vals = []
             for i in range(0,3):
-                #print(i)
-                #print(reads[i][len(reads[i])-5:len(reads[i])-3])
                 module_vals.append(reads[i][len(reads[i])-5:len(reads[i])-3])
             print(module_vals)
             #write digipot values to GUI modules (convert: hex -> int -> string)
@@ -132,15 +131,20 @@ class ModulesPanel(StackLayout):
     
     def write_synth(self, hex_string, module_name):
         #due to the initial serial setup, the communcation with the STM should be hanging after the "Resistor?" prompt
-        global ser
+        global ser, read_timer
+        if(read_timer != None):
+            read_timer.cancel()
+        
         res_index = 0
         #find the index of the corresponding resistor
         if(module_name == module_1_name):
             res_index = 1
         elif(module_name == module_2_name):
-            res_index = 5
+            #res_index = 5
+            return
         elif(module_name == module_3_name):
-            res_index = 6
+            #res_index = 6
+            return
         
         wrote_values = False
         if(ser.name != None):
@@ -162,13 +166,12 @@ class ModulesPanel(StackLayout):
                     ser.write(hex_string[3].upper().encode("utf-8"))
                     wrote_values = True
             print("Set '" + module_name + "' to " + str(int(hex_string,base=16)) + " on a 0-255 scale")
-            self.read_synth()
+            self.restart_read_timer()
     
     def restart_read_timer(self):
         #reset "read synth" timer thread
         global ser
         if(ser.name != None):
-            global read_timer
             read_timer = threading.Timer(5.0, self.read_synth)
             read_timer.start()
     
@@ -176,13 +179,19 @@ class ModulesPanel(StackLayout):
         self.update_modules_values(presets_dict[preset])
 
     def update_modules_values(self, data):
+        global read_timer
+        if(read_timer != None):
+            read_timer.cancel()
         for key, value in data.items():
             for module in self.children:
                 if key == module.label.text:
                     module.input.text = str(value)
                     hex_string = str(hex(int(module.input.text)))
                     self.write_synth(hex_string, module.label.text)
+                    time.sleep(0.25)
         print("Updated GUI values to: " + str(data))
+        self.restart_read_timer()
+
 
 class MySynth(App):
     
@@ -229,8 +238,6 @@ class MySynth(App):
 
     def load(self, path, filename):
         global presets_dict
-        if(read_timer != None):
-            read_timer.cancel()
         print("path is " + str(path))
         print("filename is " + str(filename))
         with open(os.path.join(path, filename[0])) as infile:
@@ -240,7 +247,6 @@ class MySynth(App):
                 return
             self.modules.update_modules_values(data)
             print(str(data))
-        self.modules.restart_read_timer()
         self.dismiss_popup()
     
     #setup the serial port to communicate with the STM
@@ -259,6 +265,8 @@ class MySynth(App):
             print(line)
             if (b'Resistor?\n' in line):
                 break
+        if(read_timer != None):
+            read_timer.cancel()
         self.modules.restart_read_timer()
         self.dismiss_popup()
 
