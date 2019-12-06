@@ -17,7 +17,7 @@ ser = serial.Serial() #serial object for communcating with the synth
 read_timer = None #a timer thread for periodically reading the synth's values
 
 presets_dict = {}
-focused_preset_name = ""
+focused_preset_name = ''
 
 module_1_name = "VCO - Pitch"
 module_2_name = "Low Pass Filter - Cutoff"
@@ -39,11 +39,31 @@ class PresetPip(BoxLayout):
         self.size_hint = (1, None)
         self.size_hint_min_x = 100
         self.height = 50
-        self.nameButton = Button(size_hint=(.8,1))
-        self.add_widget(self.nameButton)
-        self.closeButton = Button(text='X', size_hint=(.2,1))
-        self.add_widget(self.closeButton)
-        self.filePath = ''
+        self.name_button = Button(size_hint=(.8,1), on_press=self.update_modules)
+        self.add_widget(self.name_button)
+        self.close_button = Button(text='X', size_hint=(.2,1), on_press=self.remove_pip)
+        self.add_widget(self.close_button)
+        self.filepath = ''
+    
+    def update_modules(self, instance):
+        self.parent.parent.children[0].update_modules_from_preset(self.name_button.text)
+    
+    def remove_pip(self, instance):
+        self.parent.remove_preset(self.name_button.text)
+
+class PresetsSidebar(StackLayout):
+    def __init__(self, **kwargs):
+        super(PresetsSidebar, self).__init__(**kwargs)
+        self.orientation = 'lr-tb'
+        self.size_hint = (.2,1)
+    
+    def remove_preset(self, name):
+        for child in self.children:
+            if child.name_button.text == name:
+                self.remove_widget(child)
+                del presets_dict[name]
+                print("Closed preset. Loaded presets are now: " + str(presets_dict.keys()))
+                return
 
 class Module(BoxLayout):
     def __init__(self, **kwargs):
@@ -151,23 +171,35 @@ class ModulesPanel(StackLayout):
             global read_timer
             read_timer = threading.Timer(5.0, self.read_synth)
             read_timer.start()
+    
+    def update_modules_from_preset(self, preset):
+        self.update_modules_values(presets_dict[preset])
+
+    def update_modules_values(self, data):
+        for key, value in data.items():
+            for module in self.children:
+                if key == module.label.text:
+                    module.input.text = str(value)
+                    hex_string = str(hex(int(module.input.text)))
+                    self.write_synth(hex_string, module.label.text)
+        print("Updated GUI values to: " + str(data))
 
 class MySynth(App):
     
     def build(self):
         self.root = BoxLayout(orientation='horizontal', size_hint_min_x=500)
         #create presets sidebar
-        self.presetsSidebar = StackLayout(orientation='lr-tb', size_hint=(.2,1))
+        self.presets_sidebar = PresetsSidebar()
 
         self.savePresetButton = Button(text='Save', size_hint_x=.5, size_hint_y=None, height=30, size_hint_min_x=50, on_release=self.show_save)
-        self.presetsSidebar.add_widget(self.savePresetButton)
+        self.presets_sidebar.add_widget(self.savePresetButton)
 
         self.loadPresetButton = Button(text='Load', size_hint_x=.5, size_hint_y=None, height=30, size_hint_min_x=50, on_release=self.show_load)
-        self.presetsSidebar.add_widget(self.loadPresetButton)
+        self.presets_sidebar.add_widget(self.loadPresetButton)
 
         self.connectButton = Button(text='Connect', size_hint_x=.5, size_hint_y=None, height=30, size_hint_min_x=50, on_release=self.show_connect)
-        self.presetsSidebar.add_widget(self.connectButton)
-        self.root.add_widget(self.presetsSidebar)
+        self.presets_sidebar.add_widget(self.connectButton)
+        self.root.add_widget(self.presets_sidebar)
 
         #create modules panel
         self.modules = ModulesPanel()
@@ -196,19 +228,17 @@ class MySynth(App):
         self._popup.open()
 
     def load(self, path, filename):
+        global presets_dict
         if(read_timer != None):
             read_timer.cancel()
         print("path is " + str(path))
         print("filename is " + str(filename))
-        self.add_preset_button(path, filename)
         with open(os.path.join(path, filename[0])) as infile:
             data = json.load(infile)
-            for key, value in data.items():
-                for module in self.modules.children:
-                    if key == module.label.text:
-                        module.input.text = str(value)
-                        hex_string = str(hex(int(module.input.text)))
-                        self.modules.write_synth(hex_string, module.label.text)
+            if not self.add_preset_button(path, filename, data):
+                self.dismiss_popup()
+                return
+            self.modules.update_modules_values(data)
             print(str(data))
         self.modules.restart_read_timer()
         self.dismiss_popup()
@@ -245,19 +275,24 @@ class MySynth(App):
             data[module.label.text] = int(module.input.text)
         return data
     
-    def add_preset_button(self, path, filename):
-        presetLoaded = False
-        for preset in self.presetsSidebar.children:
+    def add_preset_button(self, path, filename, data):
+        preset_loaded = False
+        for preset in self.presets_sidebar.children:
             if preset is PresetPip:
-                if str(filename) == preset.filePath:
-                    presetLoaded = True
-        if presetLoaded == False:
+                if str(filename) == preset.filepath:
+                    preset_loaded = True
+        if preset_loaded == False:
             self.preset = PresetPip()
-            filenameSplit = str(filename).split("/")
-            filenameSplit = filenameSplit[len(filenameSplit)-1].split(".")
-            self.preset.nameButton.text = filenameSplit[0]
-            self.preset.filePath = str(filename)
-            self.presetsSidebar.add_widget(self.preset)
+            filename_split = str(filename).split("/")
+            filename_split = filename_split[len(filename_split)-1].split(".")
+            for key in presets_dict.keys():
+                if(key == filename_split[0]):
+                    return False
+            self.preset.name_button.text = filename_split[0]
+            self.preset.filepath = str(filename)
+            presets_dict[self.preset.name_button.text] = data
+            self.presets_sidebar.add_widget(self.preset)
+            return True
     
     def on_stop(self):
         if(read_timer != None):
