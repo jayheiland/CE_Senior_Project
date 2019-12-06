@@ -79,7 +79,7 @@ class Module(BoxLayout):
         global read_timer
         if(read_timer != None):
             read_timer.cancel()
-            self.parent.restart_read_timer() #cancel the reading timer while entering values, otherwise the app will continue to overwrite the GUI values
+        self.parent.restart_read_timer() #cancel the reading timer while entering values, otherwise the app will continue to overwrite the GUI values
     
     def on_enter_module_value(self, instance):
         #due to the initial serial setup, the communcation with the STM should be hanging after the "Resistor?" prompt
@@ -131,7 +131,8 @@ class ModulesPanel(StackLayout):
     
     def write_synth(self, hex_string, module_name):
         #due to the initial serial setup, the communcation with the STM should be hanging after the "Resistor?" prompt
-        global ser, read_timer
+        global ser
+        global read_timer
         if(read_timer != None):
             read_timer.cancel()
         
@@ -166,16 +167,18 @@ class ModulesPanel(StackLayout):
                     ser.write(hex_string[3].upper().encode("utf-8"))
                     wrote_values = True
             print("Set '" + module_name + "' to " + str(int(hex_string,base=16)) + " on a 0-255 scale")
-            self.restart_read_timer()
+        self.restart_read_timer()
     
     def restart_read_timer(self):
         #reset "read synth" timer thread
         global ser
+        global read_timer
         if(ser.name != None):
             read_timer = threading.Timer(5.0, self.read_synth)
             read_timer.start()
     
     def update_modules_from_preset(self, preset):
+        global presets_dict
         self.update_modules_values(presets_dict[preset])
 
     def update_modules_values(self, data):
@@ -245,13 +248,13 @@ class MySynth(App):
             if not self.add_preset_button(path, filename, data):
                 self.dismiss_popup()
                 return
-            self.modules.update_modules_values(data)
             print(str(data))
         self.dismiss_popup()
     
     #setup the serial port to communicate with the STM
     def connect(self, path, filename):
-        global ser, read_timer
+        global ser
+        global read_timer
         filename = str(filename).replace("['", "")
         filename = filename.replace("']", "")
         filename = filename.replace("cu.", "tty.")
@@ -300,6 +303,7 @@ class MySynth(App):
             self.preset.filepath = str(filename)
             presets_dict[self.preset.name_button.text] = data
             self.presets_sidebar.add_widget(self.preset)
+            self.modules.update_modules_values(data)
             return True
     
     def on_stop(self):
