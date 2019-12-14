@@ -34,6 +34,8 @@ Our weekly progress from August 2019 onwards.
 * Aros:
 * Jay: Finished breadboarding a simple Voltage-Controlled Oscillator (VCO). It produces a saw-tooth wave and could potentially be moved to a PCB and used in our final synth. Continuing to troubleshoot VCO 1, which has more features such as Volt/Octave scaling.
 
+NOTICE: From this point on, we have started sending weekly reports directly to Ken Stevens, the ECE 4710 supervisor.
+
 ## Resources
 A [list](https://docs.google.com/document/d/1bn2XwHxJaG-ds-zcZPaRnOW3YTtZJFIuCk1MftFgEfE/edit?usp=sharing) of websites, books, and people used by this project. These resources will be cited in our final report.
 
