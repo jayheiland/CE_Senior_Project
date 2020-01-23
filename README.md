@@ -8,8 +8,7 @@ analog synth with digital control. The core components of
 this project consist of a software application, synthesizer
 modules, and the software and hardware interfaces
 between them. On Demo Day we were able to show off
-the most important and core parts of our project, which
-could be scaled to a much larger product.
+the most important and core parts of our project.
 
 ## Project Structure
  - "app src" contains the source files for the supporting desktop app.
