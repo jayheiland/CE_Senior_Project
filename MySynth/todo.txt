@@ -1,7 +1,8 @@
 To-do:
 
-Sidebar functionality - load from file into dict, allow switching between presets using sidebar
 Sliders in GUI
-Make it so that load button is only enabled upon connecting to synth
 Test if the serial error is a constant problem, or if it can be fixed by resetting the STM
-uniform variable naming convention
+reduce read timer time
+try removing the update modules sleep
+
+usage note: .cancel read_timer before calling restart_read_timer
