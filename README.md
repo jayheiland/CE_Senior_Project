@@ -15,4 +15,4 @@ could be scaled to a much larger product.
  - "app src" contains the source files for the supporting desktop app.
  - "docs" contains our final report. Context for this project and all citations can be found within the final report.
  - "embedded src" contains all embedded project files for our *STM32F072 Discovery* microcontroller.
- - "schematics" contains the design files for our printed circuit board and acrylic panels.
+ - "schematics" contains the design files for our printed circuit board and acrylic panels, plus a supporting .als (Ableton Live Session) file for processing musical keyboard input into MIDI output.
