@@ -14,5 +14,5 @@ could be scaled to a much larger product.
 ## Project Structure
  - "app src" contains the source files for the supporting desktop app.
  - "docs" contains our final report. Context for this project and all citations can be found within the final report.
- - "embedded src" contains all embedded project files for our "STM32F072 Discovery" microcontroller.
+ - "embedded src" contains all embedded project files for our *STM32F072 Discovery* microcontroller.
  - "schematics" contains the design files for our printed circuit board and acrylic panels.
